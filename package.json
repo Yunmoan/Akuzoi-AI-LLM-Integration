@@ -1,0 +1,60 @@
+{
+  "name": "akuzoi-ai-llm-integration",
+  "version": "1.0.0",
+  "description": "Express后端用于与LLM交互，支持OAuth登录和智能体管理",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "jest",
+    "init-db": "node scripts/init-db.js",
+    "cleanup-memory": "node scripts/cleanup-memory.js",
+    "test-memory": "node test-simple-memory.js",
+    "debug-memory": "node test-debug-memory.js",
+    "check-db": "node check-db.js",
+    "test-session": "node test-session-fix.js",
+    "test-frontend": "node test-frontend-session.js",
+    "test-persistence": "node test-session-persistence.js",
+    "test-memory-flow": "node test-memory-flow.js",
+    "debug-session": "node debug-session-id.js",
+    "verify-session": "node test-session-fix-verify.js",
+    "test-clear": "node test-clear-memory.js",
+    "test-switching": "node test-agent-switching.js",
+    "test-timestamp": "node test-timestamp-fix.js",
+    "test-frontend-opt": "node test-frontend-optimization.js",
+    "test-ui": "node test-ui-optimization.js",
+    "test-enhanced": "node test-enhanced-message.js",
+    "test-admin": "node test-admin-functions.js"
+  },
+  "keywords": [
+    "express",
+    "llm",
+    "oauth",
+    "ai",
+    "chat"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "bcryptjs": "^2.4.3",
+    "connect-redis": "^7.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-session": "^1.17.3",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.6.5",
+    "redis": "^4.6.10",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
+  }
+}

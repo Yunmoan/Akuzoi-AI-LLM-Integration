@@ -1,0 +1,85 @@
+{
+  "admins": [
+    {
+      "oauth_username": "yunmoan",
+      "role": "super_admin",
+      "permissions": [
+        "view_all_users",
+        "view_user_chat_history",
+        "ban_user",
+        "unban_user",
+        "view_system_stats",
+        "manage_agents"
+      ],
+      "enabled": true,
+      "created_at": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "oauth_username": "moderator1",
+      "role": "moderator",
+      "permissions": [
+        "view_all_users",
+        "view_user_chat_history",
+        "ban_user",
+        "unban_user"
+      ],
+      "enabled": true,
+      "created_at": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "roles": {
+    "super_admin": {
+      "name": "超级管理员",
+      "description": "拥有所有权限",
+      "permissions": [
+        "view_all_users",
+        "view_user_chat_history",
+        "ban_user",
+        "unban_user",
+        "view_system_stats",
+        "manage_agents",
+        "manage_admins"
+      ]
+    },
+    "moderator": {
+      "name": "内容审核员",
+      "description": "负责用户内容审核和管理",
+      "permissions": [
+        "view_all_users",
+        "view_user_chat_history",
+        "ban_user",
+        "unban_user"
+      ]
+    }
+  },
+  "permissions": {
+    "view_all_users": {
+      "name": "查看所有用户",
+      "description": "查看系统中的所有用户列表"
+    },
+    "view_user_chat_history": {
+      "name": "查看用户对话历史",
+      "description": "查看指定用户的完整对话历史"
+    },
+    "ban_user": {
+      "name": "封禁用户",
+      "description": "封禁用户，禁止其使用系统"
+    },
+    "unban_user": {
+      "name": "解封用户",
+      "description": "解除用户封禁状态"
+    },
+    "view_system_stats": {
+      "name": "查看系统统计",
+      "description": "查看系统整体使用统计"
+    },
+    "manage_agents": {
+      "name": "管理智能体",
+      "description": "管理AI智能体配置"
+    },
+    "manage_admins": {
+      "name": "管理管理员",
+      "description": "管理其他管理员账户"
+    }
+  }
+}
