@@ -7,6 +7,7 @@ export interface User {
   nickname?: string;
   email?: string;
   realname_verified: boolean;
+  is_admin?: boolean;
 }
 
 interface AuthState {
@@ -15,6 +16,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  navigate?: (path: string) => void;
   
   // Actions
   login: (token: string, user: User) => void;
@@ -22,6 +24,7 @@ interface AuthState {
   setUser: (user: User) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setNavigate: (navigate: (path: string) => void) => void;
   checkAuth: () => Promise<void>;
   setNickname: (nickname: string) => Promise<void>;
 }
@@ -32,6 +35,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  navigate: undefined,
 
   login: (token: string, user: User) => {
     localStorage.setItem('token', token);
@@ -55,8 +59,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ error });
   },
 
+  setNavigate: (navigate: (path: string) => void) => {
+    set({ navigate });
+  },
+
   checkAuth: async () => {
-    const { token } = get();
+    const { token, navigate } = get();
     if (!token) {
       set({ isAuthenticated: false });
       return;
@@ -66,9 +74,63 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: true, error: null });
       const response = await authAPI.getCurrentUser();
       const user = response.data.user;
+      
+      // 检查实名认证状态
+      if (!user.realname_verified) {
+        // 如果未实名认证，保持登录状态但跳转到实名认证页面
+        set({ 
+          user, 
+          isAuthenticated: true,  // 保持认证状态
+          error: '请先完成实名认证' 
+        });
+        // 使用React Router跳转，避免页面刷新
+        if (navigate) {
+          navigate('/realname-verification');
+        } else if (typeof window !== 'undefined') {
+          window.location.href = '/realname-verification';
+        }
+        return;
+      }
+      
+      // 调试信息
+      console.log('🔍 认证检查调试信息:', {
+        user: user,
+        is_admin: user.is_admin,
+        realname_verified: user.realname_verified
+      });
+      
       set({ user, isAuthenticated: true });
     } catch (error: any) {
       console.error('Auth check failed:', error);
+      
+      // 检查是否是实名认证错误
+      if (error.response?.data?.code === 'REALNAME_REQUIRED') {
+        // 保持登录状态但跳转到实名认证页面
+        set({ 
+          isAuthenticated: true,  // 保持认证状态
+          error: '请先完成实名认证' 
+        });
+        // 使用React Router跳转，避免页面刷新
+        if (navigate) {
+          navigate('/realname-verification');
+        } else if (typeof window !== 'undefined') {
+          window.location.href = '/realname-verification';
+        }
+        return;
+      }
+      
+      // 检查是否是401错误（token过期或无效）
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        set({ 
+          token: null, 
+          user: null, 
+          isAuthenticated: false, 
+          error: '登录已过期，请重新登录' 
+        });
+        return;
+      }
+      
       localStorage.removeItem('token');
       set({ 
         token: null, 

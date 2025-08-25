@@ -35,14 +35,21 @@ const logger = winston.createLogger({
   ]
 });
 
-// 在开发环境下同时输出到控制台
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple()
-    )
-  }));
-}
+// 在所有环境下都输出到控制台，但生产环境使用不同的格式
+logger.add(new winston.transports.Console({
+  format: process.env.NODE_ENV === 'production' 
+    ? winston.format.combine(
+        winston.format.timestamp({
+          format: 'YYYY-MM-DD HH:mm:ss'
+        }),
+        winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
+          return `${timestamp} [${level.toUpperCase()}] ${service}: ${message} ${Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
+        })
+      )
+    : winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+}));
 
 module.exports = logger;

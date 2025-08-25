@@ -12,9 +12,18 @@ export default function Layout() {
     logout();
   };
 
+  // 调试信息
+  console.log('🔍 Layout组件调试信息:', {
+    user: user,
+    is_admin: user?.is_admin,
+    username: user?.username,
+    nickname: user?.nickname
+  });
+
   const navigation = [
     { name: '聊天', href: '/chat', icon: MessageSquare },
-    { name: '管理', href: '/admin', icon: Settings },
+    // 只有管理员才显示管理按钮
+    ...(user?.is_admin ? [{ name: '管理', href: '/admin', icon: Settings }] : []),
   ];
 
   return (
@@ -55,7 +64,7 @@ export default function Layout() {
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-gray-400" />
                 <span className="text-sm text-gray-700">
-                  {user?.nickname || user?.username}
+                  {user?.nickname} ({user?.username})
                 </span>
               </div>
               
@@ -74,7 +83,7 @@ export default function Layout() {
       </nav>
 
       {/* 主内容区域 */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 mt-0">
         <div className="px-4 py-6 sm:px-0">
           <Outlet />
         </div>

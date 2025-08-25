@@ -269,40 +269,24 @@ class MemoryService {
     }
   }
 
-  // 清空用户与特定智能体的所有对话
-  async clearAgentConversations(userId, agentId) {
+  // 创建新对话（清空记忆）
+  async createNewConversation(userId, agentId) {
     const connection = await mysqlPool.getConnection();
     
     try {
       await connection.beginTransaction();
 
-      // 获取要删除的会话ID
-      const [sessions] = await connection.execute(
-        'SELECT session_id FROM chat_sessions WHERE user_id = ? AND agent_id = ?',
-        [userId, agentId]
+      // 生成新的会话ID（使用UUID）
+      const newSessionId = this.generateSessionId();
+      
+      // 创建新的会话记录
+      await connection.execute(
+        'INSERT INTO chat_sessions (session_id, user_id, agent_id, title, created_at) VALUES (?, ?, ?, ?, NOW())',
+        [newSessionId, userId, agentId, '新对话']
       );
 
-      const sessionIds = sessions.map(s => s.session_id);
-
-      if (sessionIds.length > 0) {
-        // 构建IN查询的占位符
-        const placeholders = sessionIds.map(() => '?').join(',');
-        
-        // 删除聊天记录
-        await connection.execute(
-          `DELETE FROM chat_records WHERE session_id IN (${placeholders}) AND user_id = ?`,
-          [...sessionIds, userId]
-        );
-
-        // 删除会话
-        await connection.execute(
-          'DELETE FROM chat_sessions WHERE user_id = ? AND agent_id = ?',
-          [userId, agentId]
-        );
-      }
-
       await connection.commit();
-      return sessionIds.length;
+      return newSessionId;
     } catch (error) {
       await connection.rollback();
       throw error;

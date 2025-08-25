@@ -47,7 +47,7 @@ async function initializeDatabase() {
     // 连接Redis
     await redisClient.connect();
     logger.info('Redis连接成功');
-
+    
     // 创建数据库表
     await createTables();
     
@@ -76,6 +76,7 @@ async function createTables() {
         ban_reason TEXT,
         banned_by INT,
         banned_at TIMESTAMP NULL,
+        is_admin BOOLEAN DEFAULT FALSE,
         daily_message_limit INT DEFAULT 100,
         total_messages_sent INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

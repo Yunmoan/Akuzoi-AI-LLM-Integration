@@ -1,0 +1,233 @@
+[
+  {
+    "word": "台独",
+    "category": "political",
+    "level": "block",
+    "synonyms": ["台湾独立", "台独分子", "台独势力"],
+    "context": ["分裂", "独立", "台湾"]
+  },
+  {
+    "word": "藏独",
+    "category": "political",
+    "level": "block",
+    "synonyms": ["西藏独立", "藏独分子"],
+    "context": ["分裂", "独立", "西藏"]
+  },
+  {
+    "word": "疆独",
+    "category": "political",
+    "level": "block",
+    "synonyms": ["新疆独立", "疆独分子"],
+    "context": ["分裂", "独立", "新疆"]
+  },
+  {
+    "word": "港独",
+    "category": "political",
+    "level": "block",
+    "synonyms": ["香港独立", "港独分子"],
+    "context": ["分裂", "独立", "香港"]
+  },
+  {
+    "word": "法轮功",
+    "category": "political",
+    "level": "block",
+    "synonyms": ["法轮大法", "法轮功组织"],
+    "context": ["邪教", "组织", "活动"]
+  },
+  {
+    "word": "六四",
+    "category": "political",
+    "level": "block",
+    "synonyms": ["六四事件", "天安门事件"],
+    "context": ["事件", "历史", "政治"]
+  },
+  {
+    "word": "恐怖袭击",
+    "category": "violence",
+    "level": "block",
+    "synonyms": ["恐怖活动", "恐怖事件"],
+    "context": ["暴力", "恐怖", "袭击"]
+  },
+  {
+    "word": "自杀",
+    "category": "violence",
+    "level": "warn",
+    "synonyms": ["自尽", "轻生"],
+    "context": ["死亡", "生命", "结束"]
+  },
+  {
+    "word": "自残",
+    "category": "violence",
+    "level": "warn",
+    "synonyms": ["自伤", "自虐"],
+    "context": ["伤害", "痛苦", "身体"]
+  },
+  {
+    "word": "爆炸",
+    "category": "violence",
+    "level": "review",
+    "synonyms": ["爆炸物", "炸弹"],
+    "context": ["危险", "破坏", "恐怖"]
+  },
+  {
+    "word": "色情",
+    "category": "porn",
+    "level": "block",
+    "synonyms": ["黄色", "成人", "情色"],
+    "context": ["内容", "视频", "图片"]
+  },
+  {
+    "word": "成人内容",
+    "category": "porn",
+    "level": "block",
+    "synonyms": ["限制级", "18禁"],
+    "context": ["年龄", "限制", "内容"]
+  },
+  {
+    "word": "性暗示",
+    "category": "porn",
+    "level": "warn",
+    "synonyms": ["性内容", "性相关"],
+    "context": ["暗示", "内容", "话题"]
+  },
+  {
+    "word": "毒品",
+    "category": "drugs",
+    "level": "block",
+    "synonyms": ["违禁药物", "非法药物"],
+    "context": ["药物", "违禁", "非法"]
+  },
+  {
+    "word": "大麻",
+    "category": "drugs",
+    "level": "block",
+    "synonyms": ["大麻烟", "大麻制品"],
+    "context": ["毒品", "违禁", "药物"]
+  },
+  {
+    "word": "冰毒",
+    "category": "drugs",
+    "level": "block",
+    "synonyms": ["甲基苯丙胺", "冰"],
+    "context": ["毒品", "违禁", "药物"]
+  },
+  {
+    "word": "海洛因",
+    "category": "drugs",
+    "level": "block",
+    "synonyms": ["白粉", "海洛因"],
+    "context": ["毒品", "违禁", "药物"]
+  },
+  {
+    "word": "赌博",
+    "category": "gambling",
+    "level": "block",
+    "synonyms": ["博彩", "赌钱"],
+    "context": ["游戏", "金钱", "输赢"]
+  },
+  {
+    "word": "博彩",
+    "category": "gambling",
+    "level": "block",
+    "synonyms": ["赌博", "赌场"],
+    "context": ["游戏", "金钱", "输赢"]
+  },
+  {
+    "word": "六合彩",
+    "category": "gambling",
+    "level": "block",
+    "synonyms": ["六合彩", "私彩"],
+    "context": ["彩票", "赌博", "非法"]
+  },
+  {
+    "word": "传销",
+    "category": "fraud",
+    "level": "block",
+    "synonyms": ["直销", "多层次营销"],
+    "context": ["销售", "组织", "非法"]
+  },
+  {
+    "word": "非法集资",
+    "category": "fraud",
+    "level": "block",
+    "synonyms": ["集资诈骗", "非法吸收资金"],
+    "context": ["资金", "投资", "非法"]
+  },
+  {
+    "word": "电信诈骗",
+    "category": "fraud",
+    "level": "block",
+    "synonyms": ["电话诈骗", "网络诈骗"],
+    "context": ["电话", "网络", "诈骗"]
+  },
+  {
+    "word": "种族歧视",
+    "category": "hate_speech",
+    "level": "block",
+    "synonyms": ["种族主义", "民族歧视"],
+    "context": ["种族", "民族", "歧视"]
+  },
+  {
+    "word": "性别歧视",
+    "category": "hate_speech",
+    "level": "block",
+    "synonyms": ["性别偏见", "性别不平等"],
+    "context": ["性别", "平等", "歧视"]
+  },
+  {
+    "word": "宗教歧视",
+    "category": "hate_speech",
+    "level": "block",
+    "synonyms": ["宗教偏见", "信仰歧视"],
+    "context": ["宗教", "信仰", "歧视"]
+  },
+  {
+    "word": "洗钱",
+    "category": "illegal_activities",
+    "level": "block",
+    "synonyms": ["洗黑钱", "资金转移"],
+    "context": ["资金", "非法", "转移"]
+  },
+  {
+    "word": "走私",
+    "category": "illegal_activities",
+    "level": "block",
+    "synonyms": ["非法进口", "偷运"],
+    "context": ["货物", "非法", "进口"]
+  },
+  {
+    "word": "非法交易",
+    "category": "illegal_activities",
+    "level": "block",
+    "synonyms": ["黑市交易", "地下交易"],
+    "context": ["交易", "非法", "地下"]
+  },
+  {
+    "word": "敏感话题",
+    "category": "controversial",
+    "level": "review",
+    "synonyms": ["争议话题", "敏感内容"],
+    "context": ["话题", "争议", "敏感"]
+  },
+  {
+    "word": "争议内容",
+    "category": "controversial",
+    "level": "review",
+    "synonyms": ["敏感内容", "争议话题"],
+    "context": ["内容", "争议", "敏感"]
+  },
+  {
+    "word": "垃圾广告",
+    "category": "spam",
+    "level": "warn",
+    "synonyms": ["垃圾信息", "广告骚扰"],
+    "context": ["广告", "信息", "骚扰"]
+  },
+  {
+    "word": "恶意链接",
+    "category": "spam",
+    "level": "block",
+    "synonyms": ["病毒链接", "钓鱼链接"],
+    "context": ["链接", "恶意", "病毒"]
+  }
+]

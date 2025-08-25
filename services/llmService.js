@@ -34,6 +34,7 @@ class LLMService {
       id: agent.id,
       name: agent.name,
       description: agent.description,
+      avatar_url: agent.avatar_url,
       model: agent.model,
       max_tokens: agent.max_tokens,
       temperature: agent.temperature,

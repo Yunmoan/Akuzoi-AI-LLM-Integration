@@ -56,7 +56,7 @@ export default function LoginPage() {
           </Button>
           
           <p className="text-xs text-gray-500 text-center">
-            登录即表示您同意我们的 <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">服务条款</a> 和 <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">隐私政策</a>
+            登录即表示您同意我们的 <a href="/service-terms" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">服务条款</a> 和 <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">隐私政策</a>
           </p>
         </CardContent>
       </Card>

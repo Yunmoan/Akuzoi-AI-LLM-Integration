@@ -19,7 +19,7 @@ const authenticateToken = async (req, res, next) => {
     
     // 从数据库获取用户信息
     const [users] = await mysqlPool.execute(
-      'SELECT id, oauth_id, username, nickname, email, realname_verified FROM users WHERE id = ?',
+      'SELECT id, oauth_id, username, nickname, email, realname_verified, is_admin, is_banned, ban_reason FROM users WHERE id = ?',
       [decoded.userId]
     );
 
@@ -38,14 +38,6 @@ const authenticateToken = async (req, res, next) => {
         success: false,
         message: '账户已被封禁',
         ban_reason: user.ban_reason
-      });
-    }
-    
-    // 检查实名认证状态
-    if (process.env.ENABLE_REALNAME_CHECK === 'true' && !user.realname_verified) {
-      return res.status(403).json({
-        success: false,
-        message: '请完成实名认证'
       });
     }
 
@@ -73,7 +65,7 @@ const optionalAuth = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const [users] = await mysqlPool.execute(
-      'SELECT id, oauth_id, username, nickname, email, realname_verified FROM users WHERE id = ?',
+      'SELECT id, oauth_id, username, nickname, email, realname_verified, is_admin, is_banned, ban_reason FROM users WHERE id = ?',
       [decoded.userId]
     );
 
@@ -96,8 +88,33 @@ const generateToken = (userId) => {
   );
 };
 
+// 实名认证检查中间件
+const requireRealnameVerification = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: '请先登录'
+    });
+  }
+
+  if(process.env.ENABLE_REALNAME_CHECK === 'true'){
+    if (!req.user.realname_verified) {
+      return res.status(403).json({
+        success: false,
+        message: '请先完成实名认证后再使用此功能',
+        code: 'REALNAME_REQUIRED'
+      });
+    }
+  }
+
+ 
+
+  next();
+};
+
 module.exports = {
   authenticateToken,
   optionalAuth,
-  generateToken
+  generateToken,
+  requireRealnameVerification
 };

@@ -2,15 +2,17 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const llmService = require('../services/llmService');
 const memoryService = require('../services/memoryService');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRealnameVerification } = require('../middleware/auth');
 const { chatRateLimiter, dailyMessageLimiter } = require('../middleware/rateLimiter');
+const { sensitiveWordFilter, aiOutputFilter, sensitiveWordHandler } = require('../middleware/sensitiveWordFilter');
 const logger = require('../utils/logger');
 
 const router = express.Router();
 
-// 发送消息到智能体
+// 发送消息到智能体（需要实名认证）
 router.post('/send', [
   authenticateToken,
+  requireRealnameVerification,
   chatRateLimiter,
   dailyMessageLimiter,
   body('agentId')
@@ -23,7 +25,31 @@ router.post('/send', [
   body('sessionId')
     .optional()
     .isString()
-    .withMessage('会话ID格式错误')
+    .withMessage('会话ID格式错误'),
+  // 敏感词检测中间件
+  sensitiveWordFilter({
+    strictMode: false,        // 用户输入使用普通模式
+    checkContext: true,
+    minLevel: 'notice',
+    logViolations: true,
+    autoBlock: true
+  }),
+  // 敏感词处理中间件
+  sensitiveWordHandler({
+    notifyAdmin: true,        // 通知管理员
+    recordViolation: true,    // 记录违规记录
+    userWarning: true         // 向用户发送警告
+  }),
+  // AI输出敏感词检测中间件
+  aiOutputFilter({
+    strictMode: true,         // AI输出使用严格模式
+    checkContext: true,
+    minLevel: 'notice',
+    logViolations: true,
+    autoBlock: true,
+    replaceSensitiveWords: false,  // 不替换敏感词，直接阻止
+    replacementChar: '*'
+  })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -36,6 +62,25 @@ router.post('/send', [
 
     const { agentId, message, sessionId } = req.body;
     const userId = req.user.id;
+
+    // 基于系统提示词的相似度与关键字检测（后端防护）
+    try {
+      const llmServiceLocal = require('../services/llmService');
+      const guard = require('../services/promptGuardService');
+      const agent = await llmServiceLocal.getAgent(agentId);
+      const evalRes = guard.evaluateSystemPromptSimilarity(agent.system_prompt || '', message || '');
+      if (evalRes.blocked) {
+        return res.status(400).json({
+          success: false,
+          code: 'PROMPT_GUARD_BLOCKED',
+          message: `为保障平台与模型安全，已拦截高风险内容：${evalRes.reason}`,
+          info: { score: evalRes.score, similarity: Number(evalRes.similarity.toFixed(2)) }
+        });
+      }
+    } catch (err) {
+      // 保护性降级：若防护模块异常，不影响主流程
+      logger.warn('提示词防护模块异常(降级继续):', err?.message || err);
+    }
 
     // 发送消息到LLM
     const result = await llmService.sendMessage(userId, agentId, message, sessionId);
@@ -64,8 +109,8 @@ router.post('/send', [
   }
 });
 
-// 获取对话历史
-router.get('/conversation/:agentId/:conversationId', authenticateToken, async (req, res) => {
+// 获取对话历史（需要实名认证）
+router.get('/conversation/:agentId/:conversationId', [authenticateToken, requireRealnameVerification], async (req, res) => {
   try {
     const { agentId, conversationId } = req.params;
     const userId = req.user.id;
@@ -87,8 +132,8 @@ router.get('/conversation/:agentId/:conversationId', authenticateToken, async (r
   }
 });
 
-// 获取用户会话列表
-router.get('/sessions', authenticateToken, async (req, res) => {
+// 获取用户会话列表（需要实名认证）
+router.get('/sessions', [authenticateToken, requireRealnameVerification], async (req, res) => {
   try {
     const userId = req.user.id;
     const { agentId } = req.query;
@@ -109,8 +154,8 @@ router.get('/sessions', authenticateToken, async (req, res) => {
   }
 });
 
-// 获取会话历史记录
-router.get('/sessions/:sessionId/history', authenticateToken, async (req, res) => {
+// 获取会话历史记录（需要实名认证）
+router.get('/sessions/:sessionId/history', [authenticateToken, requireRealnameVerification], async (req, res) => {
   try {
     const { sessionId } = req.params;
     const userId = req.user.id;
@@ -139,8 +184,8 @@ router.get('/sessions/:sessionId/history', authenticateToken, async (req, res) =
   }
 });
 
-// 删除会话
-router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
+// 删除会话（需要实名认证）
+router.delete('/sessions/:sessionId', [authenticateToken, requireRealnameVerification], async (req, res) => {
   try {
     const { sessionId } = req.params;
     const userId = req.user.id;
@@ -168,8 +213,8 @@ router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
   }
 });
 
-// 获取用户今日消息统计
-router.get('/stats/today', authenticateToken, async (req, res) => {
+// 获取用户今日消息统计（需要实名认证）
+router.get('/stats/today', [authenticateToken, requireRealnameVerification], async (req, res) => {
   try {
     const userId = req.user.id;
     const today = new Date().toISOString().split('T')[0];
@@ -198,8 +243,8 @@ router.get('/stats/today', authenticateToken, async (req, res) => {
   }
 });
 
-// 获取用户总体统计
-router.get('/stats/overview', authenticateToken, async (req, res) => {
+// 获取用户总体统计（需要实名认证）
+router.get('/stats/overview', [authenticateToken, requireRealnameVerification], async (req, res) => {
   try {
     const userId = req.user.id;
     const { mysqlPool } = require('../config/database');
@@ -251,32 +296,33 @@ router.get('/stats/overview', authenticateToken, async (req, res) => {
   }
 });
 
-// 清空智能体所有对话
-router.delete('/agent/:agentId/conversations', authenticateToken, async (req, res) => {
+// 创建新对话（清空记忆）（需要实名认证）
+router.post('/agent/:agentId/new-conversation', [authenticateToken, requireRealnameVerification], async (req, res) => {
   try {
     const { agentId } = req.params;
     const userId = req.user.id;
 
-    const deletedCount = await memoryService.clearAgentConversations(userId, agentId);
+    const newSessionId = await memoryService.createNewConversation(userId, agentId);
 
     res.json({
       success: true,
-      message: `已清空${deletedCount}个会话`,
-      deleted_count: deletedCount
+      message: '新对话已创建',
+      session_id: newSessionId
     });
 
   } catch (error) {
-    logger.error('清空智能体对话失败:', error);
+    logger.error('创建新对话失败:', error);
     res.status(500).json({
       success: false,
-      message: '清空智能体对话失败'
+      message: '创建新对话失败'
     });
   }
 });
 
-// 更新会话标题
+// 更新会话标题（需要实名认证）
 router.put('/sessions/:sessionId/title', [
   authenticateToken,
+  requireRealnameVerification,
   body('title')
     .trim()
     .isLength({ min: 1, max: 100 })

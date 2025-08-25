@@ -24,7 +24,9 @@
     "test-frontend-opt": "node test-frontend-optimization.js",
     "test-ui": "node test-ui-optimization.js",
     "test-enhanced": "node test-enhanced-message.js",
-    "test-admin": "node test-admin-functions.js"
+    "test-admin": "node test-admin-functions.js",
+    "test-user-stats": "node test-user-stats.js",
+    "test-daily-limit": "node test-daily-limit-fix.js"
   },
   "keywords": [
     "express",

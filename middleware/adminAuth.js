@@ -11,7 +11,18 @@ const requireAdmin = async (req, res, next) => {
       });
     }
 
-    // 检查用户是否为管理员
+    // 首先检查数据库中的 is_admin 字段
+    if (req.user.is_admin) {
+      // 数据库管理员，给予所有权限
+      req.admin = {
+        username: req.user.username,
+        role: 'database_admin',
+        permissions: ['view_all_users', 'view_user_chat_history', 'ban_user', 'unban_user', 'view_system_stats', 'manage_agents', 'manage_admins']
+      };
+      return next();
+    }
+
+    // 检查配置文件中的管理员权限
     const admin = await adminService.isAdmin(req.user.username);
     if (!admin) {
       return res.status(403).json({
@@ -43,7 +54,18 @@ const requirePermission = (permission) => {
         });
       }
 
-      // 检查用户是否为管理员
+      // 首先检查数据库中的 is_admin 字段
+      if (req.user.is_admin) {
+        // 数据库管理员，给予所有权限
+        req.admin = {
+          username: req.user.username,
+          role: 'database_admin',
+          permissions: ['view_all_users', 'view_user_chat_history', 'ban_user', 'unban_user', 'view_system_stats', 'manage_agents', 'manage_admins']
+        };
+        return next();
+      }
+
+      // 检查配置文件中的管理员权限
       const admin = await adminService.isAdmin(req.user.username);
       if (!admin) {
         return res.status(403).json({
@@ -84,7 +106,18 @@ const requireAnyPermission = (permissions) => {
         });
       }
 
-      // 检查用户是否为管理员
+      // 首先检查数据库中的 is_admin 字段
+      if (req.user.is_admin) {
+        // 数据库管理员，给予所有权限
+        req.admin = {
+          username: req.user.username,
+          role: 'database_admin',
+          permissions: ['view_all_users', 'view_user_chat_history', 'ban_user', 'unban_user', 'view_system_stats', 'manage_agents', 'manage_admins']
+        };
+        return next();
+      }
+
+      // 检查配置文件中的管理员权限
       const admin = await adminService.isAdmin(req.user.username);
       if (!admin) {
         return res.status(403).json({
@@ -129,7 +162,18 @@ const requireAllPermissions = (permissions) => {
         });
       }
 
-      // 检查用户是否为管理员
+      // 首先检查数据库中的 is_admin 字段
+      if (req.user.is_admin) {
+        // 数据库管理员，给予所有权限
+        req.admin = {
+          username: req.user.username,
+          role: 'database_admin',
+          permissions: ['view_all_users', 'view_user_chat_history', 'ban_user', 'unban_user', 'view_system_stats', 'manage_agents', 'manage_admins']
+        };
+        return next();
+      }
+
+      // 检查配置文件中的管理员权限
       const admin = await adminService.isAdmin(req.user.username);
       if (!admin) {
         return res.status(403).json({

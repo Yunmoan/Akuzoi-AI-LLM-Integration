@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { adminAPI } from '@/lib/api';
 import { Users, MessageSquare, BarChart3, Shield } from 'lucide-react';
+import { useToast } from '@/components/ToastManager';
 
 interface User {
   id: number;
@@ -15,6 +16,8 @@ interface User {
   is_banned: boolean;
   daily_message_limit: number;
   total_messages_sent: number;
+  today_messages_sent: number;
+  remaining_messages: number;
   created_at: string;
 }
 
@@ -40,10 +43,13 @@ interface SystemStats {
 
 export default function AdminPage() {
   const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingLimit, setEditingLimit] = useState<number | null>(null);
+  const [newLimit, setNewLimit] = useState<number>(100);
 
   useEffect(() => {
     loadData();
@@ -78,11 +84,11 @@ export default function AdminPage() {
     
     try {
       await adminAPI.banUser(userId, reason);
-      alert('用户封禁成功');
+      showSuccess('用户封禁成功');
       loadData(); // 重新加载数据
     } catch (error) {
       console.error('封禁用户失败:', error);
-      alert('封禁用户失败');
+      showError('封禁用户失败');
     }
   };
 
@@ -91,12 +97,34 @@ export default function AdminPage() {
     
     try {
       await adminAPI.unbanUser(userId);
-      alert('用户解封成功');
+      showSuccess('用户解封成功');
       loadData(); // 重新加载数据
     } catch (error) {
       console.error('解封用户失败:', error);
-      alert('解封用户失败');
+      showError('解封用户失败');
     }
+  };
+
+  const handleUpdateDailyLimit = async (userId: number) => {
+    if (newLimit < 1 || newLimit > 1000) {
+      showError('每日限制必须在1-1000之间');
+      return;
+    }
+    
+    try {
+      await adminAPI.updateUserDailyLimit(userId, newLimit);
+      showSuccess('用户每日限制更新成功');
+      setEditingLimit(null);
+      loadData(); // 重新加载数据
+    } catch (error) {
+      console.error('更新用户每日限制失败:', error);
+      showError('更新用户每日限制失败');
+    }
+  };
+
+  const startEditingLimit = (userId: number, currentLimit: number) => {
+    setEditingLimit(userId);
+    setNewLimit(currentLimit);
   };
 
   const handleViewUserDetail = (userId: number) => {
@@ -212,7 +240,10 @@ export default function AdminPage() {
                     <td className="p-2 text-sm">
                       <div className="space-y-1">
                         <div className="text-xs text-gray-500">
-                          今日: {user.total_messages_sent || 0} / {user.daily_message_limit || 100}
+                          今日: {user.today_messages_sent || 0} / {user.daily_message_limit || 100}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          剩余: {user.remaining_messages || 0}
                         </div>
                         <div className="text-xs text-gray-500">
                           总计: {user.total_messages_sent || 0}
@@ -231,6 +262,40 @@ export default function AdminPage() {
                         >
                           查看详情
                         </Button>
+                        {editingLimit === user.id ? (
+                          <div className="flex gap-1 items-center">
+                            <Input
+                              type="number"
+                              min="1"
+                              max="1000"
+                              value={newLimit}
+                              onChange={(e) => setNewLimit(parseInt(e.target.value) || 100)}
+                              className="w-20 h-8 text-xs"
+                            />
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleUpdateDailyLimit(user.id)}
+                            >
+                              保存
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => setEditingLimit(null)}
+                            >
+                              取消
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => startEditingLimit(user.id, user.daily_message_limit || 100)}
+                          >
+                            修改限制
+                          </Button>
+                        )}
                         {user.is_banned ? (
                           <Button 
                             size="sm" 

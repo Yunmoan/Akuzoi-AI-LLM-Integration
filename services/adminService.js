@@ -75,13 +75,31 @@ class AdminService {
         [...params, limit, offset]
       );
 
+      // 为每个用户获取今日消息数量
+      const usersWithTodayCount = await Promise.all(
+        users.map(async (user) => {
+          const [todayResult] = await connection.execute(
+            `SELECT COUNT(*) as today_count
+             FROM chat_records 
+             WHERE user_id = ? AND DATE(created_at) = CURDATE()`,
+            [user.id]
+          );
+          
+          return {
+            ...user,
+            today_messages_sent: todayResult[0].today_count,
+            remaining_messages: Math.max(0, (user.daily_message_limit || 100) - todayResult[0].today_count)
+          };
+        })
+      );
+
       const [total] = await connection.execute(
         `SELECT COUNT(*) as total FROM users ${whereClause}`,
         params
       );
 
       return {
-        users,
+        users: usersWithTodayCount,
         pagination: {
           page,
           limit,
@@ -134,16 +152,25 @@ class AdminService {
 
       const user = users[0];
       
-      // 获取今日消息数量
-      const todayCount = await this.getUserTodayMessageCount(userId);
+      // 从数据库获取今日消息数量，而不是Redis
+      const [todayResult] = await connection.execute(
+        `SELECT COUNT(*) as today_count
+         FROM chat_records 
+         WHERE user_id = ? AND DATE(created_at) = CURDATE()`,
+        [userId]
+      );
+      
+      const todayCount = todayResult[0].today_count;
       
       // 计算剩余次数
-      const remainingCount = Math.max(0, user.daily_message_limit - todayCount);
+      const remainingCount = Math.max(0, (user.daily_message_limit || 100) - todayCount);
 
       return {
         ...user,
         today_messages_sent: todayCount,
-        remaining_messages: remainingCount
+        remaining_messages: remainingCount,
+        daily_message_limit: user.daily_message_limit || 100,
+        total_messages_sent: user.total_messages_sent || 0
       };
     } finally {
       connection.release();
@@ -342,6 +369,68 @@ class AdminService {
           totalPages: Math.ceil(total[0].total / limit)
         }
       };
+    } finally {
+      connection.release();
+    }
+  }
+
+  // 获取用户统计信息
+  async getUserStats(userId) {
+    const connection = await mysqlPool.getConnection();
+    
+    try {
+      logger.info(`开始获取用户统计信息: userId=${userId}`);
+      
+      // 获取用户基本信息
+      const [users] = await connection.execute(
+        'SELECT daily_message_limit, total_messages_sent FROM users WHERE id = ?',
+        [userId]
+      );
+
+      if (users.length === 0) {
+        logger.warn(`用户不存在: userId=${userId}`);
+        throw new Error('用户不存在');
+      }
+
+      const user = users[0];
+      
+      // 优先使用用户个人的每日限制，如果没有则使用新用户默认限制
+      const userDailyLimit = user.daily_message_limit;
+      const userDefaultLimit = parseInt(process.env.USER_DAILY_MESSAGE_LIMIT) || 50;
+      const maxDailyMessages = parseInt(process.env.MAX_DAILY_MESSAGES) || 100;
+      const dailyLimit = userDailyLimit || userDefaultLimit;
+      const totalSent = user.total_messages_sent || 0;
+      
+      logger.info(`用户基本信息: userId=${userId}, daily_limit=${dailyLimit} (个人限制: ${userDailyLimit}, 新用户默认: ${userDefaultLimit}, 系统最大: ${maxDailyMessages}), total_sent=${totalSent} (原始值: ${user.total_messages_sent})`);
+      
+      // 从数据库获取今日消息数，而不是Redis
+      const [todayResult] = await connection.execute(
+        `SELECT COUNT(*) as today_count
+         FROM chat_records 
+         WHERE user_id = ? AND DATE(created_at) = CURDATE()`,
+        [userId]
+      );
+      
+      const todayCount = todayResult[0].today_count;
+      logger.info(`从数据库获取今日统计: userId=${userId}, today_count=${todayCount}`);
+
+      const remainingCount = Math.max(0, dailyLimit - todayCount);
+      logger.info(`今日统计: userId=${userId}, today_count=${todayCount}, remaining=${remainingCount}`);
+
+      const result = {
+        daily_message_limit: dailyLimit,
+        total_messages_sent: totalSent,
+        today_messages_sent: todayCount,
+        remaining_messages: remainingCount,
+        max_daily_messages: maxDailyMessages,
+        user_daily_message_limit: userDefaultLimit
+      };
+      
+      logger.info(`用户统计信息返回: userId=${userId}, result=${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      logger.error(`获取用户统计信息失败: userId=${userId}, error=${error.message}`);
+      throw error;
     } finally {
       connection.release();
     }

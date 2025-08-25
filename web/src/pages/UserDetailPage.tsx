@@ -68,9 +68,10 @@ export default function UserDetailPage() {
       setIsLoading(true);
       const response = await adminAPI.getUser(parseInt(userId!));
       setUserDetail(response.data.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load user detail:', error);
-      alert('加载用户详情失败');
+      const errorMessage = error.response?.data?.message || '加载用户详情失败';
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -86,9 +87,10 @@ export default function UserDetailPage() {
       const data: ChatHistoryResponse = response.data.data;
       setChatHistory(data.records);
       setPagination(data.pagination);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load chat history:', error);
-      alert('加载聊天记录失败');
+      const errorMessage = error.response?.data?.message || '加载聊天记录失败';
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -113,12 +115,25 @@ export default function UserDetailPage() {
     return text.substring(0, maxLength) + '...';
   };
 
-  if (!userDetail) {
+  if (isLoading && !userDetail) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p>加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userDetail) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">用户信息加载失败</p>
+          <Button onClick={() => navigate('/admin')}>
+            返回管理面板
+          </Button>
         </div>
       </div>
     );
