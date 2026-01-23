@@ -169,15 +169,32 @@ class MemoryService {
       console.log('🔍 查询记忆参数:', { userId, agentId, sessionId, max_age_hours, max_messages });
 
       // 获取符合条件的消息记录
-      const [records] = await connection.execute(
-        `SELECT message, response, created_at
-         FROM chat_records 
-         WHERE user_id = ? AND agent_id = ? AND session_id = ? 
-         AND created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
-         ORDER BY created_at ASC 
-         LIMIT ?`,
-        [userId, agentId, sessionId, max_age_hours, max_messages]
-      );
+      // 将 .execute 改为 .query，并修复 SQL 语法
+       const [records] = await connection.query(
+      `SELECT message, response, created_at
+       FROM chat_records 
+      WHERE user_id = ? AND agent_id = ? AND session_id = ? 
+   AND created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
+   ORDER BY created_at ASC 
+   LIMIT ?`,
+  [
+    userId, 
+    agentId, 
+    sessionId, 
+    Number(max_age_hours), // 确保是数字类型
+    Number(max_messages)   // 确保是数字类型
+  ]
+);
+
+//      const [records] = await connection.execute(
+//        `SELECT message, response, created_at
+//         FROM chat_records 
+//        WHERE user_id = ? AND agent_id = ? AND session_id = ? 
+//         AND created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
+//         ORDER BY created_at ASC 
+//         LIMIT ?`,
+//        [userId, agentId, sessionId, max_age_hours, max_messages]
+//     );
 
       console.log('🔍 查询结果:', { 
         recordsCount: records.length, 
