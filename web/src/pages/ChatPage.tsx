@@ -1122,7 +1122,7 @@ export default function ChatPage() {
           <div className="text-xs text-gray-500 space-y-1 text-left pt-2">
             <div className="pt-1 transition-all duration-300 hover:text-gray-700">
                 <div>请注意：内容由大语言模型生成，请注意甄别。<br/>您与 Akuzoi AI 的对话内容将被保存并用于训练、研究用途，非管理员没有权限访问您的对话内容，如需删除请联系管理员。</div>
-                <div>阿库佐伊人工智能 LLM 集成服务 <br/>Powered by Akuzoi AI<br/>Beta v1.8.0 <br/><br/>至远光辉信息技术（天津）有限公司<br/>&copy; 2025 ZGIT Network. All rights reserved. </div>
+                <div>阿库佐伊人工智能 LLM 集成服务 <br/>Powered by Akuzoi AI<br/>Beta v1.8.1 <br/><br/>至远光辉信息技术（天津）有限公司<br/>&copy; 2025 ZGIT Network. All rights reserved. </div>
         </div>
       </div>
           {/* <div className="text-xs text-gray-500 pt-2 text-center">
