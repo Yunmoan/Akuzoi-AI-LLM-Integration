@@ -360,6 +360,40 @@ class SensitiveWordService {
     return stats;
   }
 
+  // 获取敏感词列表（支持分页和筛选）
+  async getSensitiveWords(page = 1, limit = 100, category = null, level = null) {
+    let filteredWords = Array.from(this.sensitiveWords.entries()).map(([word, config]) => ({
+      word,
+      ...config
+    }));
+
+    // 按分类筛选
+    if (category) {
+      filteredWords = filteredWords.filter(word => word.category === category);
+    }
+
+    // 按级别筛选
+    if (level) {
+      filteredWords = filteredWords.filter(word => word.level === level);
+    }
+
+    // 计算分页
+    const total = filteredWords.length;
+    const totalPages = Math.ceil(total / limit);
+    const offset = (page - 1) * limit;
+    const paginatedWords = filteredWords.slice(offset, offset + limit);
+
+    return {
+      words: paginatedWords,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages
+      }
+    };
+  }
+
   // 添加敏感词（动态管理）
   addSensitiveWord(word, category, level, synonyms = [], context = []) {
     if (!SensitiveWordService.CATEGORIES[category.toUpperCase()]) {

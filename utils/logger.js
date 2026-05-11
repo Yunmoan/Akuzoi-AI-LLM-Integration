@@ -4,6 +4,33 @@ const path = require('path');
 // 创建日志目录
 const logDir = path.join(__dirname, '../logs');
 
+const safeStringify = (value) => {
+  const seen = new WeakSet();
+  try {
+    return JSON.stringify(value, (key, val) => {
+      if (typeof val === 'object' && val !== null) {
+        if (seen.has(val)) {
+          return '[Circular]';
+        }
+        seen.add(val);
+      }
+
+      if (val instanceof Error) {
+        return {
+          name: val.name,
+          message: val.message,
+          stack: val.stack,
+          code: val.code
+        };
+      }
+
+      return val;
+    });
+  } catch (error) {
+    return `[Unserializable: ${error?.message || 'unknown'}]`;
+  }
+};
+
 // 定义日志格式
 const logFormat = winston.format.combine(
   winston.format.timestamp({
@@ -43,7 +70,8 @@ logger.add(new winston.transports.Console({
           format: 'YYYY-MM-DD HH:mm:ss'
         }),
         winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
-          return `${timestamp} [${level.toUpperCase()}] ${service}: ${message} ${Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
+          const extra = Object.keys(meta).length ? safeStringify(meta) : '';
+          return `${timestamp} [${level.toUpperCase()}] ${service}: ${message} ${extra}`.trim();
         })
       )
     : winston.format.combine(

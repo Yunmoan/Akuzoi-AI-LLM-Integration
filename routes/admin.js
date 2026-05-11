@@ -441,6 +441,54 @@ router.get('/sensitive-words/stats', [
   }
 });
 
+// 获取敏感词列表
+router.get('/sensitive-words', [
+  authenticateToken,
+  requirePermission('manage_content'),
+  query('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
+  query('limit').optional().isInt({ min: 1, max: 1000 }).withMessage('每页数量必须在1-1000之间'),
+  query('category').optional().isString().withMessage('分类必须是字符串'),
+  query('level').optional().isString().withMessage('级别必须是字符串')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 100;
+    const category = req.query.category;
+    const level = req.query.level;
+
+    const result = await sensitiveWordService.getSensitiveWords(page, limit, category, level);
+
+    // 记录管理员操作
+    await adminService.logAdminAction(
+      req.user.id,
+      'view_sensitive_words',
+      null,
+      null,
+      { page, limit, category, level },
+      req
+    );
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    logger.error('获取敏感词列表失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取敏感词列表失败'
+    });
+  }
+});
+
 // 添加敏感词
 router.post('/sensitive-words', [
   authenticateToken,

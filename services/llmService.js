@@ -68,7 +68,13 @@ class LLMService {
       // 注意：这里获取的是之前保存的记忆，不包括当前消息
       // 第一次发送消息时，memory为空数组（新会话）
       // 第二次发送消息时，memory包含第一次的对话记录
-      const memory = await memoryService.getAgentMemory(userId, agentId, session.session_id);
+      let memory = await memoryService.getAgentMemory(userId, agentId, session.session_id);
+
+      // 进一步按“轮次”截断，避免上下文过长导致上游超时
+      const maxHistoryPairs = parseInt(process.env.LLM_MAX_HISTORY_PAIRS || '12');
+      if (Array.isArray(memory) && memory.length > maxHistoryPairs) {
+        memory = memory.slice(-maxHistoryPairs);
+      }
       
       // 调试日志
       console.log('🔍 记忆调试信息:');
@@ -96,10 +102,14 @@ class LLMService {
       // 添加当前消息
       messages.push({ role: 'user', content: message });
       
-      // 调试日志
+      // 粗略 tokens 估算与调试日志（字符/4 近似）
+      const roughToken = (text) => Math.ceil((text || '').length / 4);
+      const approxTokens = messages.reduce((sum, m) => sum + roughToken(m.content), 0);
       console.log('  - 发送给LLM的消息数组:', messages.map(m => ({ role: m.role, content: m.content.substring(0, 50) + '...' })));
+      console.log('  - 近似tokens(字符/4):', approxTokens, ' | 轮次:', (memory?.length || 0));
 
-      // 调用OpenAI API
+      // 调用OpenAI API（增加超时与健壮性）
+      const timeoutMs = parseInt(process.env.OPENAI_TIMEOUT_MS || '45000');
       const response = await axios.post(
         `${this.baseURL}/chat/completions`,
         {
@@ -113,11 +123,19 @@ class LLMService {
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: timeoutMs,
+          validateStatus: (status) => status >= 200 && status < 500 // 上游4xx也进入catch分支统一处理
         }
       );
 
-      const aiResponse = response.data.choices[0].message.content;
+      if (response.status >= 400) {
+        const err = new Error(`LLM上游错误: ${response.status}`);
+        err.code = `UPSTREAM_${response.status}`;
+        throw err;
+      }
+
+      const aiResponse = response.data.choices?.[0]?.message?.content || '';
       const tokensUsed = response.data.usage.total_tokens;
 
       // 保存消息到记忆

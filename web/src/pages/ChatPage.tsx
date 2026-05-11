@@ -35,6 +35,17 @@ interface UserInfo {
   email: string;
 }
 
+interface Conversation {
+  id: number;
+  agent_id: string;
+  session_id: string;
+  title: string;
+  message_count: number;
+  total_tokens: number;
+  last_message_at: string | null;
+  created_at: string;
+}
+
 export default function ChatPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -56,6 +67,9 @@ export default function ChatPage() {
   // 赞助模态框状态
   const [showSponsorModal, setShowSponsorModal] = useState(false);
   const [showClearMemoryConfirm, setShowClearMemoryConfirm] = useState(false);
+  const [showConversationSwitch, setShowConversationSwitch] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
   const [promptGuardOpen, setPromptGuardOpen] = useState(false);
   const [promptGuardMsg, setPromptGuardMsg] = useState('');
   const [promptGuardDetails, setPromptGuardDetails] = useState<string[]>([]);
@@ -288,6 +302,11 @@ export default function ChatPage() {
     setSessionId(newSessionId);
     setMessages(newMessages);
     
+    // 如果对话切换弹窗是打开的，重新加载对话列表
+    if (showConversationSwitch) {
+      loadConversations();
+    }
+    
     console.log('🔍 智能体切换完成:', {
       newAgentId: agent.id,
       newSessionId: newSessionId,
@@ -319,6 +338,113 @@ export default function ChatPage() {
       showError('创建失败', '创建新对话失败，请重试');
     }
   };
+
+  // 获取对话列表
+  const loadConversations = async () => {
+    if (!selectedAgent) return;
+    
+    setLoadingConversations(true);
+    try {
+      const response = await chatAPI.getSessions(selectedAgent.id);
+      // 过滤掉消息数为0的会话
+      const filteredSessions = (response.data.sessions || []).filter((session: any) => 
+        session.message_count > 0
+      );
+      setConversations(filteredSessions);
+    } catch (error: any) {
+      console.error('Failed to load conversations:', error);
+      showError('加载失败', '无法加载对话列表，请重试');
+    } finally {
+      setLoadingConversations(false);
+    }
+  };
+
+  // 打开对话切换弹窗时自动加载对话列表
+  const handleOpenConversationSwitch = () => {
+    setShowConversationSwitch(true);
+    loadConversations();
+  };
+
+  // 清理用户消息中的增强信息，只保留实际输入内容
+  const cleanUserMessage = (message: string): string => {
+    // 匹配 [时间: ...] [用户: ...] 格式的增强信息
+    const enhancedPattern = /^\[时间: [^\]]+\] \[用户: [^\]]+\]\n?/;
+    return message.replace(enhancedPattern, '').trim();
+  };
+
+  // 切换对话
+  const switchConversation = async (conversation: Conversation) => {
+    if (!selectedAgent) return;
+    
+    try {
+      // 保存当前智能体的状态
+      if (selectedAgent) {
+        saveAgentMessages(selectedAgent.id, messages);
+        if (sessionId) {
+          updateSessionId(sessionId, selectedAgent.id);
+        }
+      }
+      
+      // 加载选中的对话历史
+      const response = await chatAPI.getSessionHistory(conversation.session_id, selectedAgent.id);
+      const history = response.data.history || [];
+      
+      // 转换历史记录为消息格式
+      const conversationMessages: Message[] = [];
+      history.forEach((record: any) => {
+        if (record.message) {
+          // 清理用户消息中的增强信息
+          const cleanMessage = cleanUserMessage(record.message);
+          conversationMessages.push({
+            role: 'user',
+            content: cleanMessage,
+            timestamp: new Date(record.created_at)
+          });
+        }
+        if (record.response) {
+          // 将智能体的多行回复分割成多个独立的消息
+          const responseLines = record.response.split('\n').filter((line: string) => line.trim());
+          if (responseLines.length > 1) {
+            // 多行回复，分割成多个消息
+            responseLines.forEach((line: string) => {
+              conversationMessages.push({
+                role: 'assistant',
+                content: line.trim(),
+                timestamp: new Date(record.created_at)
+              });
+            });
+          } else {
+            // 单行回复，保持原样
+            conversationMessages.push({
+              role: 'assistant',
+              content: record.response,
+              timestamp: new Date(record.created_at)
+            });
+          }
+        }
+      });
+      
+      // 更新状态
+      setMessages(conversationMessages);
+      updateSessionId(conversation.session_id, selectedAgent.id);
+      saveAgentMessages(selectedAgent.id, conversationMessages);
+      
+      showSuccess('对话已切换', `已切换到对话：${conversation.title || '未命名对话'}`);
+      setShowConversationSwitch(false);
+      
+      // 滚动到消息列表顶部，让用户看到切换后的内容
+      setTimeout(() => {
+        const messagesContainer = document.querySelector('.scroll-area');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = 0;
+        }
+      }, 100);
+    } catch (error: any) {
+      console.error('Failed to switch conversation:', error);
+      showError('切换失败', '无法切换到选中的对话，请重试');
+    }
+  };
+
 
 
 
@@ -401,13 +527,32 @@ export default function ChatPage() {
         oldSessionId: sessionId
       });
 
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: response.data.response,
-        timestamp: new Date(),
-      };
-
-      const finalMessages = [...newMessages, assistantMessage];
+      // 处理智能体的回复，如果是多行则分割成多个消息
+      const responseContent = response.data.response;
+      const responseLines = responseContent.split('\n').filter((line: string) => line.trim());
+      
+      let finalMessages = [...newMessages];
+      
+      if (responseLines.length > 1) {
+        // 多行回复，分割成多个消息
+        responseLines.forEach((line: string) => {
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: line.trim(),
+            timestamp: new Date(),
+          };
+          finalMessages.push(assistantMessage);
+        });
+      } else {
+        // 单行回复，保持原样
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: responseContent,
+          timestamp: new Date(),
+        };
+        finalMessages.push(assistantMessage);
+      }
+      
       setMessages(finalMessages);
       if (selectedAgent) {
         saveAgentMessages(selectedAgent.id, finalMessages);
@@ -477,11 +622,22 @@ export default function ChatPage() {
           showError('请求过于频繁', error.response.data.message);
         }
       } else if (error.response?.status === 400) {
-        // 参数错误
-        showError('参数错误', error.response.data.message || '请求参数有误');
+        // 400 场景细分：敏感词拦截 vs 其他参数错误
+        if (error.response?.data?.code === 'SENSITIVE_CONTENT_BLOCKED') {
+          const detail = error.response?.data?.details;
+          const blockedWords = detail?.blockedWords?.join('、');
+          const hint = blockedWords ? `包含敏感词：${blockedWords}` : undefined;
+          showWarning('内容被拦截', hint || (error.response?.data?.message || '检测到违规内容，消息已被阻止'));
+          // 可继续输入发送，不做额外限制
+        } else {
+          showError('参数错误', error.response.data.message || '请求参数有误');
+        }
       } else if (error.response?.status === 401) {
         // 认证错误
         showError('认证失败', '请重新登录');
+      } else if (error.code === 'ECONNABORTED') {
+        // 超时
+        showWarning('请求超时', '生成响应超时，请稍后重试或简化问题');
       } else if (error.response?.status === 500) {
         // 服务器错误
         showError('服务器错误', error.response.data.message || '服务器暂时不可用，请稍后再试');
@@ -490,11 +646,13 @@ export default function ChatPage() {
         showError('发送失败', error.response?.data?.message || '发送消息失败，请重试');
       }
       
-      // 移除用户消息（因为发送失败）
-      setMessages(prev => prev.slice(0, -1));
-      if (selectedAgent) {
-        const updatedMessages = messages;
-        saveAgentMessages(selectedAgent.id, updatedMessages);
+      // 对于网络错误或超时，不强制移除用户消息，避免误删
+      if (error.code !== 'ECONNABORTED' && !error.isAxiosError) {
+        setMessages(prev => prev.slice(0, -1));
+        if (selectedAgent) {
+          const updatedMessages = messages;
+          saveAgentMessages(selectedAgent.id, updatedMessages);
+        }
       }
     } finally {
       setIsLoading(false);
@@ -524,13 +682,13 @@ export default function ChatPage() {
                   <div
                     key={agent.id}
                     className={`p-3 rounded-lg transition-all duration-200 ${
-                      !agent.enabled
+                      !agent.enabled || isLoading
                         ? 'bg-gray-100 cursor-not-allowed opacity-50'
                         : selectedAgent?.id === agent.id
                         ? 'bg-blue-100 border-blue-300 border shadow-md cursor-pointer hover:scale-101'
                         : 'bg-gray-50 hover:bg-gray-100 hover:shadow-sm cursor-pointer hover:scale-101'
                     }`}
-                    onClick={() => agent.enabled && handleAgentChange(agent)}
+                    onClick={() => agent.enabled && !isLoading && handleAgentChange(agent)}
                   >
                                       <div className="flex items-center space-x-2">
                     {agent.avatar_url ? (
@@ -700,14 +858,26 @@ export default function ChatPage() {
                 <CardTitle className="text-lg">对话管理</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button
-                  onClick={() => setShowClearMemoryConfirm(true)}
-                  variant="outline"
-                  className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 hover:shadow-md group"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  新对话
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    onClick={handleOpenConversationSwitch}
+                    variant="outline"
+                    className="text-green-600 hover:text-green-700 hover:bg-green-50 hover:shadow-md group"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    切换对话
+                  </Button>
+                  <Button
+                    onClick={() => setShowClearMemoryConfirm(true)}
+                    variant="outline"
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 hover:shadow-md group"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    新对话
+                  </Button>
+                </div>
                 
                 {/* 调试信息 */}
                 <div className="text-xs text-gray-500 space-y-1">
@@ -952,7 +1122,7 @@ export default function ChatPage() {
           <div className="text-xs text-gray-500 space-y-1 text-left pt-2">
             <div className="pt-1 transition-all duration-300 hover:text-gray-700">
                 <div>请注意：内容由大语言模型生成，请注意甄别。<br/>您与 Akuzoi AI 的对话内容将被保存并用于训练、研究用途，非管理员没有权限访问您的对话内容，如需删除请联系管理员。</div>
-                <div>阿库佐伊人工智能 LLM 集成服务 <br/>Powered by Akuzoi AI<br/>Beta v1.5.0 <br/><br/>&copy; 2025 ZGIT Network. All rights reserved.</div>
+                <div>阿库佐伊人工智能 LLM 集成服务 <br/>Powered by Akuzoi AI<br/>Beta v1.8.0 <br/><br/>至远光辉信息技术（天津）有限公司<br/>&copy; 2025 ZGIT Network. All rights reserved. </div>
         </div>
       </div>
           {/* <div className="text-xs text-gray-500 pt-2 text-center">
@@ -1041,6 +1211,99 @@ export default function ChatPage() {
                 <p className="text-sm text-gray-500">
                   您的支持是我们前进的动力 ❤️
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 对话切换弹窗 */}
+      {showConversationSwitch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">切换对话</h3>
+                {selectedAgent && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    智能体: {selectedAgent.name}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setShowConversationSwitch(false)}
+                className="text-gray-400 hover:text-gray-600 transition-all duration-200 hover:scale-110 hover:rotate-90"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <Button
+                onClick={loadConversations}
+                disabled={loadingConversations}
+                className="w-full"
+                variant="outline"
+              >
+                {loadingConversations ? '加载中...' : '刷新对话列表'}
+              </Button>
+            </div>
+            
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {loadingConversations ? (
+                <div className="text-center text-gray-500 py-8">
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span>正在加载对话列表...</span>
+                  </div>
+                </div>
+              ) : conversations.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  暂无对话记录
+                </div>
+              ) : (
+                conversations.map((conversation) => (
+                  <div
+                    key={conversation.session_id}
+                    className={`p-3 rounded-lg border transition-all duration-200 hover:shadow-md ${
+                      conversation.session_id === sessionId
+                        ? 'bg-blue-50 border-blue-300'
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm text-gray-900 truncate">
+                          {conversation.title || '未命名对话'}
+                        </h4>
+                        <div className="text-xs text-gray-500 mt-1 space-y-1">
+                          <div>消息数: {conversation.message_count || 0}</div>
+                          <div>最后消息: {conversation.last_message_at ? new Date(conversation.last_message_at).toLocaleString('zh-CN') : '无'}</div>
+                          <div>创建时间: {new Date(conversation.created_at).toLocaleString('zh-CN')}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 ml-4">
+                        {conversation.session_id === sessionId && (
+                          <span className="text-xs text-blue-600 font-medium">当前对话</span>
+                        )}
+                        <Button
+                          onClick={() => switchConversation(conversation)}
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                        >
+                          切换
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="text-xs text-gray-500 text-center">
+                点击"切换"按钮可以切换到选中的对话
               </div>
             </div>
           </div>

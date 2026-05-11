@@ -94,14 +94,30 @@ router.post('/send', [
 
   } catch (error) {
     logger.error('发送消息失败:', error);
-    
-    if (error.message.includes('智能体不存在') || error.message.includes('API密钥无效')) {
+
+    // 明确处理 LLM 上游超时与4xx
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        success: false,
+        message: '上游模型请求超时，请稍后重试'
+      });
+    }
+
+    if (error.code && String(error.code).startsWith('UPSTREAM_')) {
+      const status = parseInt(String(error.code).split('_')[1] || '502', 10);
+      return res.status(status || 502).json({
+        success: false,
+        message: '上游模型返回错误，请稍后再试'
+      });
+    }
+
+    if (error.message?.includes('智能体不存在') || error.message?.includes('API密钥无效')) {
       return res.status(400).json({
         success: false,
         message: error.message
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: error.message || '发送消息失败，请重试'

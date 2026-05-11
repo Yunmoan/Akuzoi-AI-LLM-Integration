@@ -95,7 +95,8 @@ export const agentsAPI = {
 export const chatAPI = {
   // 发送消息
   sendMessage: (data: { agentId: string; message: string; sessionId?: string }) =>
-    api.post('/chat/send', data),
+    // 聊天生成可能较慢，单次请求适当延长超时（默认10s → 60s）
+    api.post('/chat/send', data, { timeout: 60000 }),
   
   // 获取会话列表
   getSessions: (agentId?: string) =>
@@ -132,6 +133,9 @@ export const adminAPI = {
 
   // 敏感词管理
   getSensitiveWordStats: () => api.get('/admin/sensitive-words/stats'),
+  
+  getSensitiveWords: (params?: { page?: number; limit?: number; category?: string; level?: string }) =>
+    api.get('/admin/sensitive-words', { params }),
   
   addSensitiveWord: (data: {
     word: string;
